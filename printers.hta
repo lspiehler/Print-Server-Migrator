@@ -1,7 +1,3 @@
-<!--SOURCES-->
-<!--https://groups.google.com/forum/#!topic/microsoft.public.scripting.wsh/eLNcG5sLtRA-->
-<!--SOURCES-->
-
 <!--steps
 idle
 list
@@ -20,16 +16,13 @@ createdestinationprinter
 -->
 
 <head>
-<title>Print Migrator</title>
+<title>Print Server Migrator</title>
 <HTA:APPLICATION 
-     APPLICATIONNAME="Print Migrator"
+     APPLICATIONNAME="Print Server Migrator"
      SCROLL="yes"
-     SINGLEINSTANCE="yes"
+     SINGLEINSTANCE="no"
 >
 <object id="oSink" style="display:none;" classid="clsid:75718C9A-F029-11D1-A1AC-00C04FB6C223"></object>
-<!--<object id="uSink" style="display:none;" classid="clsid:75718C9A-F029-11D1-A1AC-00C04FB6C223"></object>-->
-<!--<object id="dSink" style="display:none;" classid="clsid:75718C9A-F029-11D1-A1AC-00C04FB6C223"></object>-->
-<!--<script language="vbscript" for="oSink" event="OnObjectReady(objObject, objAsyncContext)"></script>-->
 </head>
 
 <script type="text/vbscript">
@@ -314,15 +307,15 @@ createdestinationprinter
 			<button onclick="cancelJob()" id="cancel" style="margin-left: 5px;">Cancel</button>
 		</p>
 	</div>
-	<button onclick="listPrinters()">Go</button>
-	<button onclick="migratePrinters 0, true">Migrate</button>
+	<button title="Query servers for printers" onclick="listPrinters()">Query</button>
+	<button title="Migrate selected printers to Server B" onclick="migratePrinters 0, true">Migrate Printers</button>
 	Server A: <input id="hostnamea" value="ITS-Lyas" type="text" />
 	Server B: <input id="hostnameb" value="Test-10-PC" type="text" />
 	<input id="nameconvention" checked onclick="checkValueChange()" type="checkbox" /> Use IP Naming Convention
 	<input id="conventionvalue" type="text" disabled value="SMH-" />
 	<input id="sharing" checked type="checkbox" /> Disable Sharing
 	<input id="mode" readonly type="text" />
-	<button onclick="compare()">Compare</button>
+	<button title="Mark printers that left do not exist on the right" onclick="compare()">Compare</button>
 	<table border=1 style="width:100%; height: 500px;">
 		<tr>
 			<th style="width:50%">
