@@ -1,0 +1,663 @@
+<!--SOURCES-->
+<!--https://groups.google.com/forum/#!topic/microsoft.public.scripting.wsh/eLNcG5sLtRA-->
+<!--SOURCES-->
+
+<!--steps
+idle
+list
+iterate
+getdriver
+drivercheck
+driverexists
+drivermissing
+querydrivers
+driverselected
+getsourceprinterportname
+getsourceport
+createdestinationport
+getsourceprinterparams
+createdestinationprinter
+-->
+
+<head>
+<title>Print Migrator</title>
+<HTA:APPLICATION 
+     APPLICATIONNAME="Print Migrator"
+     SCROLL="yes"
+     SINGLEINSTANCE="yes"
+>
+<object id="oSink" style="display:none;" classid="clsid:75718C9A-F029-11D1-A1AC-00C04FB6C223"></object>
+<!--<object id="uSink" style="display:none;" classid="clsid:75718C9A-F029-11D1-A1AC-00C04FB6C223"></object>-->
+<!--<object id="dSink" style="display:none;" classid="clsid:75718C9A-F029-11D1-A1AC-00C04FB6C223"></object>-->
+<!--<script language="vbscript" for="oSink" event="OnObjectReady(objObject, objAsyncContext)"></script>-->
+</head>
+
+<script type="text/vbscript">
+
+	Sub getPrinters(id, side)
+		//window.document.getElementById("container").innerHTML("test")
+		If side = "a" Then
+			strComputer = getHostnameA()
+		Else
+			strComputer = getHostnameB()
+		End If
+		//MsgBox(strComputer)
+		//MsgBox(computer)
+		
+		If NOT id = "" Then
+			portid = " AND DeviceID = """ + id + """"
+		Else
+			changeMode("list")
+			disableAllInput(true)
+			portid = ""
+		End If
+	
+		Set bjSWbemLocator = CreateObject("WbemScripting.SWbemLocator")
+		'If windowsIntegrated() Then
+			Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2")
+		'Else
+			'Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2", getUsername(), getPassword())
+		'End If
+		'clearPassword()
+		//Set oSink = CreateObject("WbemScripting.SWbemSink","oSink_")
+		objWMIService.ExecQueryAsync oSink, "SELECT * FROM Win32_Printer WHERE ServerName = NULL" + portid 
+    End Sub
+	
+	Sub getPorts(name, value, side)
+		//window.document.getElementById("container").innerHTML("test")
+		If side = "a" Then
+			strComputer = getHostnameA()
+		Else
+			strComputer = getHostnameB()
+		End If
+		//MsgBox(strComputer)
+		//MsgBox(computer)
+		
+		If NOT name = "" Then
+			portid = " WHERE " + name + " = """ + value + """"
+		Else
+			portid = ""
+		End If
+	
+		Set bjSWbemLocator = CreateObject("WbemScripting.SWbemLocator")
+		'If windowsIntegrated() Then
+			Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2")
+		'Else
+			'Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2", getUsername(), getPassword())
+		'End If
+		'clearPassword()
+		'MsgBox("SELECT * FROM Win32_TCPIPPrinterPort" + portid)
+		//Set oSink = CreateObject("WbemScripting.SWbemSink","oSink_")
+		objWMIService.ExecQueryAsync oSink, "SELECT * FROM Win32_TCPIPPrinterPort" + portid 
+    End Sub
+	
+	Sub getDriver(name, value, side)
+		//window.document.getElementById("container").innerHTML("test")
+		If side = "a" Then
+			strComputer = getHostnameA()
+		Else
+			strComputer = getHostnameB()
+		End If
+		//MsgBox(strComputer)
+		//MsgBox(computer)
+		
+		If NOT name = "" Then
+			driverid = " WHERE " + name + " LIKE """ + value + "%"""
+		Else
+			driverid = ""
+		End If
+	
+		Set bjSWbemLocator = CreateObject("WbemScripting.SWbemLocator")
+		'If windowsIntegrated() Then
+			Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2")
+		'Else
+			'Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2", getUsername(), getPassword())
+		'End If
+		'clearPassword()
+		'MsgBox("SELECT * FROM Win32_PrinterDriver" + driverid)
+		//Set oSink = CreateObject("WbemScripting.SWbemSink","oSink_")
+		objWMIService.ExecQueryAsync oSink, "SELECT * FROM Win32_PrinterDriver" + driverid 
+    End Sub
+	
+	Sub oSink_OnCompleted(HResult, oErr, oCtx)
+		//could not find driver
+		If mode = "drivercheck" Then
+			sleepBeforeDriverFail()
+		ElseIf mode = "list" Then
+			If listside = "a" Then
+				listside = "b"
+				listPrinters()
+			Else
+				changeMode("idle")
+				listOperationComplete()
+			End If
+		End If
+		//prompt for alternative driver
+	End Sub
+	
+	Sub oSink_OnObjectPut(objPath, oCtx)
+		MsgBox("here")
+	End Sub
+	
+	Sub oSink_OnObjectReady(oInst, octx)
+		//MsgBox("Got Instance: " & oInst.SID)
+		//window.document.getElementById("container").innerHTML(oInst.SID)
+		//MsgBox(oInst.Name)
+		If oInst.CreationClassName = "Win32_Printer" Then
+			If mode = "list" Then
+				addPrinterToTable "table" + listside, oInst.Name, oInst.DeviceID, oInst.DriverName, oInst.PortName
+			ElseIf mode = "getsourceprinterportname" Then
+				changeMode("getsourceport")
+				getPorts "Name", oInst.PortName, "a"
+			ElseIf mode = "getsourceprinterparams" Then
+				result = createPrinter(oInst.Name, oInst.DriverName, oInst.PortName, oInst.Shared, oInst.ShareName, oInst.Comment, oInst.Location, oInst.Caption, oInst.Published, b)
+				migratePrinters currentprinterid + 1, result
+			ElseIf mode = "getdriver" Then
+				changeMode("drivercheck")
+				getDriver "Name", oInst.DriverName, "b"
+			ElseIf mode = "driverexists" OR mode = "driverselected" Then
+				changeMode("getsourceprinterportname")
+				getPrinters currentprintername, "a"
+			End If
+		ElseIf oInst.CreationClassName = "Win32_TCPIPPrinterPort" Then
+			If mode = "getsourceport" Then
+				changeMode("createdestinationport")
+				//MsgBox(oInst.Name)
+				currentprinterip = oInst.HostAddress
+				createPort oInst.Name, oInst.HostAddress, oInst.PortNumber, oInst.Protocol, b
+				changeMode("getsourceprinterparams")
+				getPrinters currentprintername, "a"
+			End If
+		ElseIf oInst.CreationClassName = "Win32_PrinterDriver" Then
+			If mode = "drivercheck" Then
+				driver = true
+				//MsgBox(oInst.Name)
+				changeMode("driverexists")
+				//migratePrinters currentprinterid + 1, result
+				getPrinters currentprintername, "a"
+			ElseIf mode = "querydrivers" Then
+				addDriversToDropdown(oInst.Name)
+			End If
+		Else
+		
+		End If
+	End Sub
+	
+	Sub createPort(name, hostaddress, port, protocol, side)
+		If side = "a" Then
+			strComputer = getHostnameA()
+		Else
+			strComputer = getHostnameB()
+		End If
+	
+		Set bjSWbemLocator = CreateObject("WbemScripting.SWbemLocator")
+		'If windowsIntegrated() Then
+			Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2")
+		'Else
+			'Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2", getUsername(), getPassword())
+		'End If
+	
+		Set NewPort = objWMIService.Get("Win32_TCPIPPrinterPort").SpawnInstance_ 
+		'MsgBox(port)
+		NewPort.HostAddress = hostaddress
+		NewPort.Name = hostaddress
+		NewPort.PortNumber = port
+		NewPort.Protocol = protocol  ' 1 = Raw, 2 = LPR
+		NewPort.Put_
+		
+	End Sub
+	
+	Sub brokenCreatePort(name, hostaddress, port, protocol, side)
+	
+		//const WBEM_FLAG_CREATE_OR_UPDATE = 0x00,
+		//const WBEM_FLAG_UPDATE_ONLY = 0x01,
+		//const WBEM_FLAG_CREATE_ONLY = 0x02,
+		//const WBEM_FLAG_UPDATE_SAFE_MODE = 0x20,
+		//const WBEM_FLAG_UPDATE_FORCE_MODE = 0x40
+		//const WBEM_CHANGE_FLAG_TYPE;
+		
+		If side = "a" Then
+			strComputer = getHostnameA()
+		Else
+			strComputer = getHostnameB()
+		End If
+	
+		Set bjSWbemLocator = CreateObject("WbemScripting.SWbemLocator")
+		'If windowsIntegrated() Then
+			Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2")
+		'Else
+			'Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2", getUsername(), getPassword())
+		'End If
+	
+		Set NewPort = objWMIService.Get("Win32_TCPIPPrinterPort").SpawnInstance_ 
+		'MsgBox(port)
+		NewPort.HostAddress = hostaddress
+		NewPort.Name = name
+		NewPort.PortNumber = port
+		NewPort.Protocol = protocol  ' 1 = Raw, 2 = LPR
+		objWMIService.ExecMethodAsync oSink, "Win32_TCPIPPrinterPort", "Create", NewPort
+		
+	End Sub
+	
+	Function createPrinter(name, driver, port, printershare, sharename, comment, location, caption, published, side)
+		If side = "a" Then
+			strComputer = getHostnameA()
+		Else
+			strComputer = getHostnameB()
+		End If
+	
+		Set bjSWbemLocator = CreateObject("WbemScripting.SWbemLocator")
+		'If windowsIntegrated() Then
+			Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2")
+		'Else
+			'Set objWMIService = bjSWbemLocator.ConnectServer(strComputer, "root\cimv2", getUsername(), getPassword())
+		'End If
+	
+		Set NewPrinter = objWMIService.Get("Win32_Printer").SpawnInstance_
+		'MsgBox(driver)
+		If customdriver = "" Then
+			drivername = driver
+		Else
+			drivername = customdriver
+			'MsgBox(customdriver)
+			customdriver = ""
+		End If
+		'NewPrinter.DeviceID = name
+		'NewPrinter.Name = name
+		usenameconvention = useNamingConvention()
+		If usenameconvention = "" Then
+			printername = name
+		Else
+			printername = convertName(currentprinterip)
+		End If
+		//MsgBox(printername)
+		NewPrinter.DeviceID = printername
+		NewPrinter.Name = printername
+		NewPrinter.DriverName = drivername
+		NewPrinter.PortName = currentprinterip
+		NewPrinter.Comment = comment
+		NewPrinter.Location = location
+		NewPrinter.Caption = caption
+		NewPrinter.Published = published
+		NewPrinter.Network = False
+		If disableSharingChecked() = True Then
+			NewPrinter.Shared = False
+		Else
+			NewPrinter.Shared = printershare
+			NewPrinter.ShareName = sharename
+		End If
+		On Error Resume Next
+		Err.Clear
+		NewPrinter.Put_
+		If Err.Number <> 0 Then
+			MsgBox("Error: " + Err.Description + ". Failed to create printer """ + currentprintername + """ on Server B.")
+			On Error Goto 0
+			createPrinter = False
+		Else
+			On Error Goto 0
+			addPrinterToTable "tableb", printername, printername, drivername, currentprinterip
+			createPrinter = True
+		End If
+		
+	End Function
+</script>
+
+<body>
+	<div id="driverprompt" style="display: none; padding-top: 20px; background-color: white; position: absolute; margin: auto; width: 400px; height: 200px; border: 1px solid black;">
+		<p align="center">The driver does not exist on the destination server. Please select an alternative driver:</p>
+		<p align="center">
+			<select id="driverselection" style="width: 70%;">
+				<option value="none">Automatic (hopefully)</option>
+			</select><br />
+			<button onclick="selectCustomDriver()" id="driverselect" style="margin-left: 5px;">Select</button>
+			<button onclick="skipPrinter()" id="skip" style="margin-left: 5px;">Skip</button>
+			<button onclick="cancelJob()" id="cancel" style="margin-left: 5px;">Cancel</button>
+		</p>
+	</div>
+	<button onclick="listPrinters()">Go</button>
+	<button onclick="migratePrinters 0, true">Migrate</button>
+	Server A: <input id="hostnamea" value="ITS-Lyas" type="text" />
+	Server B: <input id="hostnameb" value="Test-10-PC" type="text" />
+	<input id="nameconvention" checked onclick="checkValueChange()" type="checkbox" /> Use IP Naming Convention
+	<input id="conventionvalue" type="text" disabled value="SMH-" />
+	<input id="sharing" checked type="checkbox" /> Disable Sharing
+	<input id="mode" readonly type="text" />
+	<button onclick="compare()">Compare</button>
+	<table border=1 style="width:100%; height: 500px;">
+		<tr>
+			<th style="width:50%">
+				Server A
+			</th>
+			<th style="width:50%">
+				Server B
+			</th>
+		</tr>
+		<tr>
+			<td valign="top">
+				<div style="width: 100%; overflow: scroll; height: 500px;">
+					<table style="width:100%;" border=1 id="tablea">
+						<tr>
+							<th></th>
+							<th><a href="javascript:void(0);" onclick="javascript:sortTable(this.parentNode.cellIndex); return false;">Name</a></th>
+							<th><a href="javascript:void(0);" onclick="javascript:sortTable(this.parentNode.cellIndex); return false;">Driver</a></th>
+							<th><a href="javascript:void(0);" onclick="javascript:sortTable(this.parentNode.cellIndex); return false;">IP</a></th>
+						</tr>
+					</table>
+				</div>
+			</td>
+			<td valign="top">
+				<div style="width: 100%; overflow: scroll; height: 500px;">
+					<table style="width:100%;" border=1 id="tableb">
+						<tr>
+							<th></th>
+							<th><a href="javascript:void(0);" onclick="javascript:sortTable(this.parentNode.cellIndex); return false;">Name</a></th>
+							<th><a href="javascript:void(0);" onclick="javascript:sortTable(this.parentNode.cellIndex); return false;">Driver</a></th>
+							<th><a href="javascript:void(0);" onclick="javascript:sortTable(this.parentNode.cellIndex); return false;">IP</a></th>
+						</tr>
+					</table>
+				</div>
+			</td>
+		</tr>
+	</table>
+</body>
+
+<script type="text/javascript">
+
+	var mode;
+	var customdriver = '';
+	var listside = 'a';
+	
+	function sortTable(cellindex) {
+		var tables = Array("tablea","tableb");
+		for(var j = 0; j <= tables.length - 1; j++) {
+			var table, rows, switching, i, x, y, shouldSwitch;
+			table = document.getElementById(tables[j]);
+			switching = true;
+			/*Make a loop that will continue until
+			no switching has been done:*/
+			while (switching) {
+				//start by saying: no switching is done:
+				switching = false;
+				rows = table.rows;
+				/*Loop through all table rows (except the
+				first, which contains table headers):*/
+				for (i = 1; i < (rows.length - 1); i++) {
+					//start by saying there should be no switching:
+					shouldSwitch = false;
+					/*Get the two elements you want to compare,
+					one from current row and one from the next:*/
+					x = rows[i].getElementsByTagName("TD")[cellindex];
+					y = rows[i + 1].getElementsByTagName("TD")[cellindex];
+					//check if the two rows should switch place:
+					if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+						//if so, mark as a switch and break the loop:
+						shouldSwitch = true;
+						break;
+					}
+				}
+				if (shouldSwitch) {
+					/*If a switch has been marked, make the switch
+					and mark that a switch has been done:*/
+					rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+					switching = true;
+				}
+			}
+		}
+	}
+	
+	function checkValuechange() {
+		var checkbox = document.getElementById("nameconvention");
+		var value = document.getElementById("conventionvalue");
+		if(checkbox.checked) {
+			value.disabled = false;
+		} else {
+			value.disabled = true;
+		}
+	}
+	
+	function disableSharingChecked() {
+		var sharing = document.getElementById("sharing");
+		if(sharing.checked) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	function useNamingConvention() {
+		var checkbox = document.getElementById("nameconvention");
+		var value = document.getElementById("conventionvalue");
+		if(checkbox.checked) {
+			return value.value;
+		} else {
+			return '';
+		}
+	}
+	
+	function checkExistence(name) {
+		for(var i = 0; i <= tableb.rows.length - 1; i++) {
+			if(tableb.rows[i].cells[1].innerText==name) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	function compare() {
+		var tablea = document.getElementById("tablea");
+		var name;
+		for(var i = 1; i <= tablea.rows.length - 1; i++) {
+			//alert(useNamingConvention());
+			if(useNamingConvention() == '') {
+				name = tablea.rows[i].cells[1].innerText;
+			} else {
+				name = convertName(tablea.rows[i].cells[3].innerText);
+				//alert(name);
+			}
+			if(checkExistence(name)) {
+				//alert('found');
+				tablea.rows[i].cells[1].style.color = 'black';
+			} else {
+				//alert('not found')
+				tablea.rows[i].cells[1].style.color = 'red';
+			}
+		}
+	}
+	
+	function convertName(ip) {
+		var octets = ip.split('.')
+		var name = document.getElementById("conventionvalue").value;
+		//var name = "SMH-";
+		for(var i = 2; i <= 3; i++) {
+			var octet = octets[i];
+			for(var j = octet.length; j <= 2; j++ ) {
+				octet = '0' + octet;
+			}
+			name += octet;
+		}
+		return name;
+	}
+	
+	function cancelJob() {
+		hideDriverPrompt();
+		finishJob();
+	}
+	
+	function skipPrinter() {
+		hideDriverPrompt();
+		migratePrinters(currentprinterid + 1, false);
+	}
+	
+	function hideDriverPrompt() {
+		//alert('no driver');
+		var driverprompt = document.getElementById("driverprompt");
+		driverprompt.style.display = 'none';
+	}
+
+	function changeMode(nextmode) {
+		mode = nextmode
+		var htmlmode = document.getElementById("mode");
+		htmlmode.innerText = nextmode;
+	}
+
+	changeMode("idle");
+	var currentprintername;
+	var currentprinterid;
+	var currentprinterip;
+	var driver = false;
+	
+	function listPrinters() {
+		removePrintersFromTable("table" + listside);
+		getPrinters('', listside);
+	}
+
+	function addPrinterToTable(table, printer, id, driver, port) {
+		if(port.split('.').length==4) {
+			var stable = document.getElementById(table);
+			//var row = stable.insertRow(stable.rows.length - 1);
+			var row = stable.insertRow(1);
+			var cell0 = row.insertCell(0);
+			var cell1 = row.insertCell(1);
+			var cell2 = row.insertCell(2);
+			var cell3 = row.insertCell(3);
+			//var input = document.createElement("<input name='profile' value='" + SID + "'>");
+			var input = document.createElement("input");
+			input.type = "checkbox";
+			input.className = "printercheck";
+			input.disabled = true;
+			input.id = 'printer-' + id;
+			cell0.appendChild(input);
+			cell1.innerText = printer;
+			cell2.innerText = driver;
+			cell3.innerText = port;
+		}
+	}
+	
+	function removePrintersFromTable(table) {
+	//alert(table);
+		var stable = document.getElementById(table);
+		for(i = stable.rows.length - 1; i >= 1; i--) {
+			stable.deleteRow(i);
+		}
+	}
+	
+	function selectCustomDriver() {
+		hideDriverPrompt();
+		var dropdown = document.getElementById('driverselection');
+		var driver = dropdown.options[dropdown.options.selectedIndex].value
+		if(driver!="none") {
+			customdriver = driver;
+		} else {
+			customdriver = '';
+		}
+		changeMode("driverselected");
+		getPrinters(currentprintername, "a");
+	}
+	
+	function removeDriversFromDropdown() {
+		var driverselection = document.getElementById("driverselection");
+		for(i = driverselection.options.length - 1; i >= 1; i--) {
+			driverselection.remove(i);
+		}
+	}
+	
+	function addDriversToDropdown(driver) {
+		var driverselection = document.getElementById("driverselection");
+		var option = document.createElement("option");
+		option.text = driver.split(',')[0];
+		option.value = driver.split(',')[0];
+		driverselection.add(option);
+	}
+	
+	function promptForDriver() {
+		//alert('no driver');
+		removeDriversFromDropdown();
+		getDriver('', '', 'b');
+		var driverprompt = document.getElementById("driverprompt");
+		driverprompt.style.marginLeft = (document.body.clientWidth / 2) - (parseInt(driverprompt.style.width.replace('px')) / 2) + 'px'
+		var driverselect = document.getElementById("driverselect");
+		var skip = document.getElementById("skip");
+		var cancel = document.getElementById("cancel");
+		driverselect.disabled = false;
+		skip.disabled = false;
+		cancel.disabled = false;
+		driverprompt.style.display = 'block';
+	}
+	
+	function checkDriver() {
+		if(driver==false) {
+			changeMode("drivermissing");
+			changeMode("querydrivers");
+			promptForDriver();
+		}
+		driver = false;
+	}
+	
+	function sleepBeforeDriverFail() {
+		setTimeout(function() {
+			checkDriver();
+		}, 1000);
+	}
+	
+	function disableAllInput(action) {
+		var inputs = document.getElementsByTagName("input");
+		for(var i = 0; i <= inputs.length - 1; i++) {
+			inputs[i].disabled = action;
+		}
+		var buttons = document.getElementsByTagName("button");
+		for(var i = 0; i <= buttons.length - 1; i++) {
+			buttons[i].disabled = action;
+		}
+	}
+	
+	function migratePrinters(id, result) {
+		changeMode("iterate");
+		disableAllInput(true);
+		if(currentprintername && result) {
+			var checkbox = document.getElementById("printer-" + currentprintername);
+			checkbox.checked = false;
+		}
+		var inputs = document.getElementsByTagName("input");
+		for(var i = id; i <= inputs.length - 1; i++) {
+			if(inputs[i].type=="checkbox" && inputs[i].className=="printercheck") {
+				if(inputs[i].checked) {
+					changeMode("getdriver");
+					currentprintername = inputs[i].id.replace('printer-','');
+					currentprinterid = i
+					getPrinters(currentprintername, 'a');
+					return;
+				}
+			}
+		}
+		finishJob();
+	}
+	
+	function finishJob() {
+		currentprintername = null;
+		currentprinterid = null;
+		currentprinterip = null;
+		changeMode("idle");
+		disableAllInput(false);
+	}
+	
+	function listOperationComplete() {
+		disableAllInput(false);
+		checkValuechange();
+		listside = 'a';
+		//alert(document.body.clientWidth);
+	}
+	
+	function getHostnameA() {
+		var hostnamea = document.getElementById("hostnamea");
+		return hostnamea.value;
+	}
+	
+	function getHostnameB() {
+		var hostnameb = document.getElementById("hostnameb");
+		return hostnameb.value;
+	}
+	
+	checkValuechange();
+</script>
+
+</html>
