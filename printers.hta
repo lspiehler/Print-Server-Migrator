@@ -260,8 +260,10 @@ createdestinationprinter
 		usenameconvention = useNamingConvention()
 		If usenameconvention = "" Then
 			printername = name
+			printersharename = sharename
 		Else
 			printername = convertName(currentprinterip)
+			printersharename = convertName(currentprinterip)
 		End If
 		//MsgBox(printername)
 		NewPrinter.DeviceID = printername
@@ -277,7 +279,7 @@ createdestinationprinter
 			NewPrinter.Shared = False
 		Else
 			NewPrinter.Shared = printershare
-			NewPrinter.ShareName = sharename
+			NewPrinter.ShareName = printersharename
 		End If
 		On Error Resume Next
 		Err.Clear
