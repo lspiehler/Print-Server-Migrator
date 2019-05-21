@@ -270,7 +270,7 @@ createdestinationprinter
 		NewPrinter.Name = printername
 		NewPrinter.DriverName = drivername
 		NewPrinter.PortName = currentprinterip
-		NewPrinter.Comment = comment
+		NewPrinter.Comment = convertName(currentprinterip) + " " + currentprinterip
 		NewPrinter.Location = location
 		NewPrinter.Caption = caption
 		NewPrinter.Published = published
@@ -312,10 +312,10 @@ createdestinationprinter
 	<button title="Query servers for printers" onclick="listPrinters()">Query</button>
 	<button title="Migrate selected printers to Server B" onclick="migratePrinters 0, true">Migrate Printers</button>
 	Server A: <input id="hostnamea" value="ITS-Lyas" type="text" />
-	Server B: <input id="hostnameb" value="Test-10-PC" type="text" />
-	<input id="nameconvention" checked onclick="checkValueChange()" type="checkbox" /> Use IP Naming Convention
+	Server B: <input id="hostnameb" value="its-prodesk2" type="text" />
+	<input id="nameconvention" onclick="checkValueChange()" type="checkbox" /> Use IP Naming Convention
 	<input id="conventionvalue" type="text" disabled value="SMH-" />
-	<input id="sharing" checked type="checkbox" /> Disable Sharing
+	<input id="sharing" type="checkbox" /> Disable Sharing
 	<input id="mode" readonly type="text" />
 	<button title="Mark printers that left do not exist on the right" onclick="compare()">Compare</button>
 	<table border=1 style="width:100%; height: 500px;">
@@ -429,17 +429,18 @@ createdestinationprinter
 		}
 	}
 	
-	function checkExistence(name) {
+	function checkExistence(name, column) {
 		for(var i = 0; i <= tableb.rows.length - 1; i++) {
-			if(tableb.rows[i].cells[1].innerText==name) {
-				return true;
+			if(tableb.rows[i].cells[column].innerText==name) {
+				return i;
 			}
 		}
-		return false;
+		return -1;
 	}
 	
 	function compare() {
 		var tablea = document.getElementById("tablea");
+		var tableb = document.getElementById("tableb");
 		var name;
 		for(var i = 1; i <= tablea.rows.length - 1; i++) {
 			//alert(useNamingConvention());
@@ -449,9 +450,20 @@ createdestinationprinter
 				name = convertName(tablea.rows[i].cells[3].innerText);
 				//alert(name);
 			}
-			if(checkExistence(name)) {
+			var index = checkExistence(name, 1);
+			if(index >= 0 ) {
 				//alert('found');
 				tablea.rows[i].cells[1].style.color = 'black';
+				if(tableb.rows[index].cells[2].innerText!=tablea.rows[i].cells[2].innerText) {
+					tablea.rows[i].cells[2].style.color = 'red';
+				} else {
+					tablea.rows[i].cells[2].style.color = 'black';
+				}
+				if(tableb.rows[index].cells[3].innerText!=tablea.rows[i].cells[3].innerText) {
+					tablea.rows[i].cells[3].style.color = 'red';
+				} else {
+					tablea.rows[i].cells[3].style.color = 'black';
+				}
 			} else {
 				//alert('not found')
 				tablea.rows[i].cells[1].style.color = 'red';
